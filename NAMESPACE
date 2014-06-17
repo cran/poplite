@@ -1,0 +1,19 @@
+import(dplyr)
+import(methods)
+importFrom(DBI, dbGetQuery, dbBegin, dbExistsTable, dbCommit, dbConnect, dbDisconnect, make.db.names.default, dbListTables)
+importFrom(RSQLite, dbGetPreparedQuery,SQLite)
+importFrom(lazyeval, lazy_eval, lazy_dots, lazy)
+importFrom(igraph, graph.data.frame, shortest.paths, get.shortest.paths, V)
+
+#methods
+export(populate, createTable, mergeStatement, insertStatement, makeSchemaFromData, makeSchemaFromFunction, append, length, 'relationship<-', schema, dbFile,
+	tables, columns, 'constraint<-')
+
+S3method(filter_, Database)
+S3method(select_, Database)
+S3method(subset, TableSchemaList)
+
+#other functions
+export(correct.df.names, Database, filter, select)
+
+exportClass(TableSchemaList, Database)
