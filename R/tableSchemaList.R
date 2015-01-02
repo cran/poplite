@@ -29,6 +29,11 @@ get.starting.point <- function(tbsl, use.tables)
     sp.mat[is.infinite(sp.mat)] <- 0
     diag(sp.mat) <- NA
     
+    if (use.tables %in% rownames(sp.mat) == F || use.tables %in% colnames(sp.mat) == F)
+    {
+	browser()
+    }
+    
     sp.mat <- sp.mat[use.tables, use.tables, drop=F]
     
     is.valid <- apply(sp.mat, 1, function(x) all(na.omit(x) > 0))
@@ -45,7 +50,7 @@ get.shortest.query.path <- function(tbsl, start=NULL, finish=NULL, reverse=TRUE,
 {   
     tsl.graph <- tsl.to.graph(tbsl)
     
-    if (missing(finish) || is.null(finish) || is.na(finish))
+    if (missing(finish) || is.null(finish) || all(is.na(finish)))
     {
         finish <- V(tsl.graph)
     }
@@ -574,17 +579,27 @@ setMethod("colSchema", signature("TableSchemaList"), function(obj, table.name, m
     }
     else
     {
-	
 	foreign.schema <- foreignExtKeySchema(obj, table.name)
 	foreign.cols <- foreignExtKeyCols(obj, table.name)
 	local.cols <- foreignLocalKeyCols(obj, table.name)
 	
-	direct.keys <- directKeys(obj, table.name)
+	is.direct.key <- isDirectKey(obj, table.name)
 	
+	direct.keys <- as.character(unlist(foreign.cols[is.direct.key]))
 	unl.f.c <- as.character(unlist(foreign.cols))
 	unl.l.c <- as.character(unlist(local.cols))
 	
 	rm.cols <- setdiff(unl.l.c, direct.keys)
+	
+	#if there are any direct keys that are derived from other tables 'local.keys' then remove as well
+	
+	derived.direct <- direct.keys %in% unlist(local.cols[is.direct.key==F])
+	
+	if (any(derived.direct))
+	{
+	    rm.cols <- append(rm.cols, direct.keys[derived.direct])
+	}
+	
 	keep.foreign.cols <- (unl.f.c %in% rm.cols == F) & (unl.f.c %in% base.cols == F)
 	
 	#keep.foreign.cols <- unlist(mapply(function(x,y){
@@ -594,7 +609,7 @@ setMethod("colSchema", signature("TableSchemaList"), function(obj, table.name, m
 	#			    return(should.keep)
 	#		       }, foreign.cols, local.cols))
 	
-	rm.base.cols <- base.cols %in% setdiff(unlist(local.cols), direct.keys)
+	rm.base.cols <- base.cols %in% rm.cols#setdiff(unlist(local.cols), direct.keys)
 	rm.base.cols <- rm.base.cols | base.schema == "INTEGER PRIMARY KEY AUTOINCREMENT"
 	
 	if (type == "cols")
@@ -644,6 +659,14 @@ setMethod("directKeys", signature("TableSchemaList"), function(obj, table.name)
 		is.direct.keys <- sapply(all.keys, function(x) length(intersect(x$local.keys, x$ext.keys)) == length(union(x$local.keys, x$ext.keys)))
 		
 		return(unique(as.character(unlist(all.keys[is.direct.keys]))))
+	  })
+
+setGeneric("isDirectKey", def=function(obj, ...) standardGeneric("isDirectKey"))
+setMethod("isDirectKey", signature("TableSchemaList"), function(obj, table.name)
+	  {
+		all.keys <- return.element(obj, "foreign.keys")[[table.name]]
+		
+		return(sapply(all.keys, function(x) length(intersect(x$local.keys, x$ext.keys)) == length(union(x$local.keys, x$ext.keys))))
 	  })
 
 setGeneric("mergeStatement", def=function(obj, ...) standardGeneric("mergeStatement"))
@@ -919,3 +942,21 @@ setReplaceMethod("relationship", signature("TableSchemaList"), function(obj, val
                     validObject(obj)
                     return(obj)
                  })
+
+
+read.database.tables <- function(db.name, num.rows=10)
+{
+    temp.con <- dbConnect(SQLite(), db.name)
+    
+    tab.names <- dbListTables(temp.con)
+    
+    tab.list <- lapply(tab.names, function(x) dbGetQuery(temp.con, paste0('SELECT * FROM ', x, ' LIMIT ', num.rows)))
+    
+    names(tab.list) <- tab.names
+    
+    tab.list <- tab.list[-which(names(tab.list) == "sqlite_sequence")]
+    
+    dbDisconnect(temp.con)
+    
+    return(tab.list)
+}

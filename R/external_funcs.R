@@ -2,7 +2,7 @@
 filter_.Database <- function(.data, ...,.dots)
 	  {
 	    
-	    use.expr <- .dots
+	    use.expr <- all_dots(.dots, ..., all_named = TRUE)
 	    
 	    if (length(use.expr) != 1)
 	    {
@@ -90,16 +90,16 @@ filter_.Database <- function(.data, ...,.dots)
 		cur.stat <- gsub(paste0(i, "."), "", cur.stat)
 	    }
 	   
-	    use.statement <- paste("filter(my_db_tbl,", cur.stat, ")")
-	    
-	    return(eval(parse(text=use.statement)))
+	    #use.statement <- paste("filter(my_db_tbl,", cur.stat, ")")
+	    #return(eval(parse(text=use.statement)))
+	    return (filter_(my_db_tbl, cur.stat))
     }
 
 select <- function(.data,..., .tables=NULL)
 {   
     use.dots <- lazy_dots(...)
     
-    if ((missing(.tables) || is.null(.tables) || is.na(.tables))==F && class(.data) == "Database")
+    if ((missing(.tables) || is.null(.tables) || is.na(.tables))==F && inherits(.data, "Database") == TRUE)
     {
 	use.dots <- append(use.dots, list(.tables=.tables))
     }
@@ -109,18 +109,21 @@ select <- function(.data,..., .tables=NULL)
 
 select_.Database <- function(.data, ..., .dots)
 {
+    if (missing(.dots) || is.null(.dots) || all(is.na(.dots)))
+    {
+      .dots <- list()
+    }
+  
     #check to see if .tables is part of .dots
-    
     if('.tables' %in% names(.dots))
     {
 	.tables <- .dots$.tables
-	#.tables <- lazy_eval(.dots$.tables)
 	.dots <- .dots[-which(names(.dots) == ".tables")]
     }else{
 	.tables <- NULL
     }
     
-    use.expr <- .dots
+    use.expr <- all_dots(.dots, ..., all_named = TRUE)
     
     if (is.null(.tables) == F)
     {
@@ -208,11 +211,15 @@ select_.Database <- function(.data, ..., .dots)
 		
 		which.to.use <- sapply(sel.tabs, length) > 0
 		
-		unl.tabs <- unlist(sel.tabs[which.to.use])
+		##bugfix to address multiple columns from same table
+		#unl.tabs <- unlist(sel.tabs[which.to.use])
+		#use.tables <- clean.cols[not.sup.tab][unl.tabs]
+		#names(use.tables) <- names(unl.tabs)
 		
-		use.tables <- clean.cols[not.sup.tab][unl.tabs]
-		
-		names(use.tables) <- names(unl.tabs)
+		unl.tabs <- stack(sel.tabs[which.to.use])
+		use.tables <- sapply(sel.tabs[which.to.use], function(x) paste(clean.cols[not.sup.tab][x], collapse=","))
+		#use.tables <- clean.cols[not.sup.tab][unl.tabs$values]
+		#names(use.tables) <- as.character(unl.tabs$ind)
 		
 	    }else{
 		#otherwise the columns would need to be contiguous between multiple tables
@@ -267,15 +274,31 @@ select_.Database <- function(.data, ..., .dots)
 		new.tab.list <- clean.cols[not.sup.tab==F]
 		names(new.tab.list) <- use.tabs
 		
-		use.tables <- append(use.tables, new.tab.list)
+		for(tab.name in names(new.tab.list))
+		{
+		  if(tab.name %in% names(use.tables))
+		  {
+		    use.tables[tab.name] <- paste(use.tables[tab.name], new.tab.list[tab.name], sep=",")
+		  }else{
+		    use.tables <- append(use.tables,new.tab.list[tab.name])
+		  }
+		}
 	    }
 	    
 	}else{
-	    use.tables <- clean.cols
-	    names(use.tables) <- sapply(inp.tab.list, "[", 1)
+	    unl.tabs <- stack(inp.tab.list)
+	    unl.tabs$cols <- sapply(strsplit(as.character(unl.tabs$ind), "\\."), "[", 2)
+	    
+	    split.tabs <- split(unl.tabs, unl.tabs$values)
+	    
+	    use.tables <- sapply(split.tabs, function(x) paste(x$cols, collapse=","))
+	  
+	    #use.tables <- clean.cols
+	    #names(use.tables) <- sapply(inp.tab.list, "[", 1)
 	}
 	
-	
+	#return(eval(parse(text=paste("select(join(.data, use.tables), ", paste(clean.cols, collapse=","), ")"))))
+	return(select_(join(.data, use.tables), .dots=as.list(clean.cols)))
     }
     
     return(join(.data, use.tables))
