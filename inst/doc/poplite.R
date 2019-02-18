@@ -1,5 +1,5 @@
 ### R code from vignette source 'poplite.Rnw'
-### Encoding: UTF-8
+### Encoding: ASCII
 
 ###################################################
 ### code chunk number 1: poplite.Rnw:33-38
