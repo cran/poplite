@@ -177,134 +177,112 @@ select(sample.tracking.db, .tables=c("clinical", "gender"))
 
 
 ###################################################
-### code chunk number 15: poplite.Rnw:239-243
+### code chunk number 15: poplite.Rnw:239-243 (eval = FALSE)
 ###################################################
-
-library(VariantAnnotation)
-fl <- system.file("extdata", "chr22.vcf.gz", package="VariantAnnotation")
-vcf <- readVcf(fl, "hg19")
-
-
-###################################################
-### code chunk number 16: poplite.Rnw:250-264
-###################################################
-
-populate.ref.table <- function(vcf.obj)
-{
-    ref.dta <- cbind(
-                    seqnames=as.character(seqnames(vcf.obj)),
-                    as.data.frame(ranges(vcf.obj))[,c("start", "end")],
-                    ref=as.character(ref(vcf.obj)),
-                    stringsAsFactors=FALSE
-                    )
-    return(ref.dta)
-}
-
-vcf.sc <- makeSchemaFromFunction(populate.ref.table, "reference", vcf.obj=vcf[1:5])
-
+## 
+## library(VariantAnnotation)
+## fl <- system.file("extdata", "chr22.vcf.gz", package="VariantAnnotation")
+## vcf <- readVcf(fl, "hg19")
 
 
 ###################################################
-### code chunk number 17: poplite.Rnw:269-287
+### code chunk number 16: poplite.Rnw:250-264 (eval = FALSE)
 ###################################################
-
-populate.allele.table <- function(vcf.obj)
-{
-    exp.obj <- expand(vcf.obj)
-    ref.dta <- cbind(
-                    seqnames=as.character(seqnames(exp.obj)),
-                    as.data.frame(ranges(exp.obj))[,c("start", "end")],
-                    ref=as.character(ref(exp.obj)),
-                    alt=as.character(alt(exp.obj)),
-                    stringsAsFactors=FALSE
-                    )
-    return(ref.dta)
-}
-
-allele.sc <- makeSchemaFromFunction(populate.allele.table, "alleles", vcf.obj=vcf[1:5])
-
-vcf.sc <- poplite::append(vcf.sc, allele.sc)
-
+## 
+## populate.ref.table <- function(vcf.obj)
+## {
+##     ref.dta <- cbind(
+##                     seqnames=as.character(seqnames(vcf.obj)),
+##                     as.data.frame(ranges(vcf.obj))[,c("start", "end")],
+##                     ref=as.character(ref(vcf.obj)),
+##                     stringsAsFactors=FALSE
+##                     )
+##     return(ref.dta)
+## }
+## 
+## vcf.sc <- makeSchemaFromFunction(populate.ref.table, "reference", vcf.obj=vcf[1:5])
+## 
 
 
 ###################################################
-### code chunk number 18: poplite.Rnw:294-317
+### code chunk number 17: poplite.Rnw:269-287 (eval = FALSE)
 ###################################################
-
-populate.samp.alt.table <- function(vcf.obj)
-{
-    temp.vrange <- as(vcf.obj, "VRanges")
-    
-    ret.dta <- cbind(
-                        seqnames=as.character(seqnames(temp.vrange)),
-                        as.data.frame(ranges(temp.vrange))[,c("start", "end")],
-                        ref=ref(temp.vrange),
-                        alt=alt(temp.vrange),
-                        sample=as.character(sampleNames(temp.vrange)),
-                        allele_count=sapply(strsplit(temp.vrange$GT, "\\|"),
-                                function(x) sum(as.integer(x), na.rm=T)),
-                        stringsAsFactors=F
-                        )
-    
-    return(ret.dta[ret.dta$allele_count > 0,])
-}
-
-geno.all.sc <- makeSchemaFromFunction(populate.samp.alt.table, "sample_alleles", vcf.obj=vcf[1:5])
-
-vcf.sc <- poplite::append(vcf.sc, geno.all.sc)
-
+## 
+## populate.allele.table <- function(vcf.obj)
+## {
+##     exp.obj <- expand(vcf.obj)
+##     ref.dta <- cbind(
+##                     seqnames=as.character(seqnames(exp.obj)),
+##                     as.data.frame(ranges(exp.obj))[,c("start", "end")],
+##                     ref=as.character(ref(exp.obj)),
+##                     alt=as.character(alt(exp.obj)),
+##                     stringsAsFactors=FALSE
+##                     )
+##     return(ref.dta)
+## }
+## 
+## allele.sc <- makeSchemaFromFunction(populate.allele.table, "alleles", vcf.obj=vcf[1:5])
+## 
+## vcf.sc <- poplite::append(vcf.sc, allele.sc)
+## 
 
 
 ###################################################
-### code chunk number 19: poplite.Rnw:325-332
+### code chunk number 18: poplite.Rnw:294-317 (eval = FALSE)
 ###################################################
-
-relationship(vcf.sc, from="reference", to="alleles") <- .~seqnames+start+end+ref
-
-relationship(vcf.sc, from="reference", to="sample_alleles") <- .~seqnames+start+end+ref
-
-relationship(vcf.sc, from="alleles", to="sample_alleles") <- .~.reference+alt
-
-
-
-###################################################
-### code chunk number 20: poplite.Rnw:340-371
-###################################################
-
-vcf.db <- Database(vcf.sc, tempfile())
-
-populate(vcf.db, vcf.obj=vcf[1:1000])
-
-populate(vcf.db, vcf.obj=vcf[1001:2000])
-
-pop.res <- as.data.frame(poplite::select(vcf.db, .tables=tables(vcf.db)))
-
-vrange.tab <- as(vcf[1:2000], "VRanges")
-
-vrange.dta <- data.frame(seqnames=as.character(seqnames(vrange.tab)),
-                         start=start(vrange.tab),
-                         end=end(vrange.tab),
-                         ref=as.character(ref(vrange.tab)),
-                         alt=as.character(alt(vrange.tab)),
-                         sample=as.character(sampleNames(vrange.tab)),
-                         allele_count=sapply(strsplit(vrange.tab$GT, "\\|"),
-                                function(x) sum(as.integer(x), na.rm=T)),
-                         stringsAsFactors=F)
-
-vrange.dta <- vrange.dta[vrange.dta$allele_count > 0,]
-
-vrange.dta <- vrange.dta[do.call("order", vrange.dta),]
-
-sub.pop.res <- pop.res[,names(vrange.dta)]
-
-sub.pop.res <- sub.pop.res[do.call("order", sub.pop.res),]
-
-all.equal(sub.pop.res, vrange.dta, check.attributes=F)
-
+## 
+## populate.samp.alt.table <- function(vcf.obj)
+## {
+##     temp.vrange <- as(vcf.obj, "VRanges")
+##     
+##     ret.dta <- cbind(
+##                         seqnames=as.character(seqnames(temp.vrange)),
+##                         as.data.frame(ranges(temp.vrange))[,c("start", "end")],
+##                         ref=ref(temp.vrange),
+##                         alt=alt(temp.vrange),
+##                         sample=as.character(sampleNames(temp.vrange)),
+##                         allele_count=sapply(strsplit(temp.vrange$GT, "\\|"),
+##                                 function(x) sum(as.integer(x), na.rm=T)),
+##                         stringsAsFactors=F
+##                         )
+##     
+##     return(ret.dta[ret.dta$allele_count > 0,])
+## }
+## 
+## geno.all.sc <- makeSchemaFromFunction(populate.samp.alt.table, "sample_alleles", vcf.obj=vcf[1:5])
+## 
+## vcf.sc <- poplite::append(vcf.sc, geno.all.sc)
+## 
 
 
 ###################################################
-### code chunk number 21: poplite.Rnw:374-375
+### code chunk number 19: poplite.Rnw:325-332 (eval = FALSE)
+###################################################
+## 
+## relationship(vcf.sc, from="reference", to="alleles") <- .~seqnames+start+end+ref
+## 
+## relationship(vcf.sc, from="reference", to="sample_alleles") <- .~seqnames+start+end+ref
+## 
+## relationship(vcf.sc, from="alleles", to="sample_alleles") <- .~.reference+alt
+## 
+
+
+###################################################
+### code chunk number 20: poplite.Rnw:340-349 (eval = FALSE)
+###################################################
+## 
+## vcf.db <- Database(vcf.sc, tempfile())
+## 
+## populate(vcf.db, vcf.obj=vcf[1:1000])
+## 
+## populate(vcf.db, vcf.obj=vcf[1001:2000])
+## 
+## pop.res <- as.data.frame(poplite::select(vcf.db, .tables=tables(vcf.db)))
+## 
+
+
+###################################################
+### code chunk number 21: poplite.Rnw:352-353
 ###################################################
 sessionInfo()
 

@@ -1,6 +1,6 @@
 Package: poplite
-Version: 0.99.21
-Date: 2019-2-18
+Version: 0.99.23
+Date: 2019-5-13
 Title: Tools for Simplifying the Population and Querying of SQLite
         Databases
 Authors@R: c(person("Daniel", "Bottomly", role=c("cre", "aut"), email="bottomly@ohsu.edu"),
@@ -13,11 +13,11 @@ Description: Provides objects and accompanying methods which facilitates populat
 License: GPL-3
 URL: https://github.com/dbottomly/poplite
 Collate: tableSchemaList.R Database.R external_funcs.R
-Packaged: 2019-02-18 19:12:58 UTC; root
+Packaged: 2019-05-13 17:07:10 UTC; root
 NeedsCompilation: no
 Author: Daniel Bottomly [cre, aut],
   Shannon McWeeney [aut],
   Beth Wilmot [aut]
 Maintainer: Daniel Bottomly <bottomly@ohsu.edu>
 Repository: CRAN
-Date/Publication: 2019-02-18 20:00:02 UTC
+Date/Publication: 2019-05-13 18:10:03 UTC
